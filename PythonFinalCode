@@ -1,0 +1,119 @@
+from pandas import read_csv
+from sklearn.naive_bayes import GaussianNB
+import numpy as np
+from sklearn.metrics import confusion_matrix, roc_curve, auc
+from sklearn.cross_validation import train_test_split
+import pandas as pd
+import webbrowser
+from bisect import bisect
+from flask import Flask, render_template
+app = Flask(__name__) 
+
+#code that I worked on
+@app.route('/') #this is the homepage
+def home_page():
+    return render_template('index.html')
+ 
+##@app.route('/redirectpage') #name of the page
+#def redirectpage():
+    #return render_template('redirect.html')
+
+##button
+
+from tkinter import *
+root=Tk()
+root.title('TWEET LIKE TRUMP')
+
+mystring=StringVar()
+
+
+Label(root, text="Wanna know if you tweet like Trump? Enter your tweet in the box below and then click the button to see how well you did!\n").grid(row=0, sticky=W)
+Entry(root, textvariable=mystring).grid(row=1,column=0, sticky=W)
+Label(root, text=mystring).grid(row=2,column=0,sticky=W)
+
+##code that the guys worked on
+def getvalue():
+    user_tweet=mystring.get()
+   
+    df_trump = read_csv("data/Donald-Tweets.csv")
+    df_people = read_csv("data/People.csv")
+
+    tweets_trump_train = df_trump['Tweet_Text']
+    tweets_people_train = df_people['Tweet_Text']
+    tweets_train = list(tweets_trump_train) + list(tweets_people_train)
+
+    tweets_trump = df_trump['Tweet_Text']
+    tweets_people = df_people['Tweet_Text']
+    tweets = list(tweets_trump) + list(tweets_people)
+    user_tweet = [user_tweet]
+    #list(tweets_trump_test) + list(tweets_people_test)
+    Y_train1 = [1]*len(tweets_trump_train)
+    Y_train2 = [0]*len(tweets_people_train)
+    Y_train = Y_train1 + Y_train2
+
+
+    wordSet = set()
+    for tweet in tweets:
+        wordsArray = tweet.lower().split()
+        for word in wordsArray:
+            wordSet.add(''.join(e for e in word if e.isalnum()))
+
+    feature_cols = list(wordSet)
+    feature_cols.sort()
+
+    X_train = []
+    for tweet in tweets_train:
+        line = [0] * len(wordSet)
+        wordsArray = tweet.lower().split()
+        for word in wordsArray:
+            word = ''.join(e for e in word if e.isalnum())
+            index = bisect(feature_cols, word)-1
+            line[index] += 1
+        X_train.append(line)
+    X_test = []
+    for tweet in user_tweet:
+        line = [0] * len(wordSet)
+        wordsArray = tweet.lower().split()
+        for word in wordsArray:
+            word = ''.join(e for e in word if e.isalnum())
+            index = bisect(feature_cols, word)-1
+            line[index] += 1
+        X_test.append(line)
+
+    #Train our Naive Bayes Classifier
+    gnb = GaussianNB()
+    clf = gnb.fit(X_train, Y_train)
+
+    getvalue.Y_pred = clf.predict(X_test)
+    X_test = pd.DataFrame(X_test);
+    #1 is trump
+    print(getvalue.Y_pred)#Y_pred
+    return(getvalue.Y_pred)#Y_pred
+
+
+##code that I worked on
+WSignUp = Button(root, text="See Results", command=getvalue).grid(row=3,column=0,sticky=W)
+
+root.mainloop()
+
+
+@app.route('/iftrump') #name of the page
+def iftrump():
+    return render_template('iftrump.html')  
+    
+@app.route('/ifnottrump') #name of the page
+def ifnottrump():
+    return render_template('ifnottrump.html')
+
+
+
+if getvalue.Y_pred==1:
+    webbrowser.open('http://127.0.0.1:5000/iftrump')
+else: 
+    webbrowser.open('http://127.0.0.1:5000/ifnottrump')
+        
+    
+if __name__ == '__main__':
+       app.run()
+
+    
